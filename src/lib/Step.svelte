@@ -31,6 +31,20 @@
   let words = $state<string[]>([]);
   let outcome = $state<{ text: string; color: string; style: string } | null>(null);
 
+  // Static Serbian words list loaded from text asset (Vite will inline this as string)
+  import wordsText from './words.txt?raw';
+  const WORD_POOL = wordsText.split(/\r?\n/).map(w => w.trim()).filter(Boolean);
+  function pickRandomWords(count: number) {
+    const copy = [...WORD_POOL];
+    const picked: string[] = [];
+    for (let i = 0; i < count && copy.length; i++) {
+      const idx = Math.floor(Math.random() * copy.length);
+      picked.push(copy[idx]);
+      copy.splice(idx, 1);
+    }
+    return picked;
+  }
+
   const outcomes = [
     { text: "Ne, i ...", color: "#c9302c", style: "bold" },
     { text: "Ne", color: "#e4716e", style: "normal" },
@@ -62,11 +76,9 @@
     const numDice = selectedDifficultyConfig.diceCount;
     diceRolls.splice(0, diceRolls.length, ...Array.from({ length: numDice }, rollDie));
     outcome = getOutcome(selectedDifficulty, diceRolls);
-    words.splice(0, words.length,
-      Math.floor(Math.random() * 1000).toString(),
-      Math.floor(Math.random() * 1000).toString(),
-      Math.floor(Math.random() * 1000).toString()
-    );
+    // Replace previous placeholder random numbers with 3 distinct Serbian words
+    const picked = pickRandomWords(3);
+    words.splice(0, words.length, ...picked);
     onAddStep();
     tried = true;
   }
@@ -91,7 +103,7 @@
     </fieldset>
 
     <button onclick={handleTryClick} disabled={selectedDifficulty === null}>
-      Try
+      Hajde!
     </button>
 
   <!-- After 'Try' is clicked, show the dice and words instead -->
@@ -106,23 +118,25 @@
       {/each}
     </div>
 
-    {#if outcome}
-      <div class="outcome" style="color: {outcome.color}; border-color: {outcome.color}; background-color: {outcome.color}1a;">
-        {#if outcome.style === 'bold'}
-          <strong>{outcome.text}</strong>
-        {:else if outcome.style === 'italic'}
-          <em>{outcome.text}</em>
-        {:else}
-          {outcome.text}
-        {/if}
-      </div>
-    {/if}
+    <div class="result-row">
+      {#if outcome}
+        <div class="outcome" style="color: {outcome.color}; border-color: {outcome.color}; background-color: {outcome.color}1a;">
+          {#if outcome.style === 'bold'}
+            <strong>{outcome.text}</strong>
+          {:else if outcome.style === 'italic'}
+            <em>{outcome.text}</em>
+          {:else}
+            {outcome.text}
+          {/if}
+        </div>
+      {/if}
 
-    <ul>
-      {#each words as word}
-        <li>{word}</li>
-      {/each}
-    </ul>
+      <ul class="words-list">
+        {#each words as word}
+          <li>{word}</li>
+        {/each}
+      </ul>
+    </div>
   {/if}
 </div>
 
@@ -187,10 +201,40 @@
   .outcome {
     font-size: 1.8rem;
     font-weight: bold;
-    text-align: center;
+    text-align: left;
     padding: 1rem;
     border-radius: 8px;
     border: 2px solid;
+  }
+
+  .result-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .words-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 1.8rem;
+    color: #000;
+    font-weight: 600;
+    min-width: 140px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .words-list li {
+    color: inherit;
+    font-size: inherit;
+    line-height: 1.1;
   }
 
   .dice {
