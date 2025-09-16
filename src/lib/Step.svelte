@@ -1,45 +1,72 @@
 <script lang="ts">
-  // The callback prop for Svelte 5 best practices
-  export let onAddStep: () => void;
-
-  // Data for our UI elements
-  const difficulties = ["Tough", "Difficult", "Normal", "Easy", "Super easy"];
-  
-  // Using Font Awesome dice icons via svelte-fa
   import Fa from 'svelte-fa';
   import { faDiceOne, faDiceTwo, faDiceThree, faDiceFour, faDiceFive, faDiceSix } from '@fortawesome/free-solid-svg-icons';
+
+  // Access props with live updates
+  const { onAddStep } = $props<{ onAddStep: () => void }>();
+
+  const DIFFICULTY_LEVELS = {
+    SUPER_HARD: 0,
+    HARD: 1,
+    NORMAL: 2,
+    EASY: 3,
+    SUPER_EASY: 4
+  } as const;
+
+  type DifficultyLevel = typeof DIFFICULTY_LEVELS[keyof typeof DIFFICULTY_LEVELS];
+
+  const difficulties = [
+    { level: DIFFICULTY_LEVELS.SUPER_HARD, label: "Veoma teško", diceCount: 3 },
+    { level: DIFFICULTY_LEVELS.HARD, label: "Teško", diceCount: 2 },
+    { level: DIFFICULTY_LEVELS.NORMAL, label: "Normalno", diceCount: 1 },
+    { level: DIFFICULTY_LEVELS.EASY, label: "Lako", diceCount: 2 },
+    { level: DIFFICULTY_LEVELS.SUPER_EASY, label: "Veoma lako", diceCount: 3 }
+  ];
+
   const diceIcons = [faDiceOne, faDiceTwo, faDiceThree, faDiceFour, faDiceFive, faDiceSix];
 
-  let words: string[] = [];
-  let diceRolls: number[] = [];
-  let selectedDifficulty: string | null = null;
-  let tried = false;
+  let selectedDifficulty = $state<DifficultyLevel | null>(null);
+  let tried = $state(false);
+  let diceRolls = $state<number[]>([]);
+  let words = $state<string[]>([]);
+  let outcome = $state<{ text: string; color: string; style: string } | null>(null);
 
-  const diceCountMap: { [key: string]: number } = {
-    "Tough": 3,
-    "Difficult": 2,
-    "Normal": 1,
-    "Easy": 2,
-    "Super easy": 3
-  };
+  const outcomes = [
+    { text: "Ne, i ...", color: "#c9302c", style: "bold" },
+    { text: "Ne", color: "#e4716e", style: "normal" },
+    { text: "Ne, ali ...", color: "#e8834f", style: "italic" },
+    { text: "Da, ali...", color: "#a3be63", style: "italic" },
+    { text: "Da", color: "#79c779", style: "normal" },
+    { text: "Da, i ...", color: "#449d44", style: "bold" }
+  ];
+
+  function rollDie() {
+    return Math.floor(Math.random() * 6) + 1;
+  }
+
+  function getOutcome(difficulty: DifficultyLevel, rolls: number[]): { text: string; color: string; style: string } | null {
+    if (rolls.length === 0) return null;
+    
+    // For normal, easy, super easy - use max value
+    // For hard, super hard - use min value
+    const isEasyDifficulty = difficulty >= DIFFICULTY_LEVELS.NORMAL;
+    const targetValue = isEasyDifficulty ? Math.max(...rolls) : Math.min(...rolls);
+    
+    // Map 1-6 to outcomes array (0-5 index)
+    return outcomes[targetValue - 1];
+  }
 
   function handleTryClick() {
-    if (!selectedDifficulty) return;
-    
-    const numDice = diceCountMap[selectedDifficulty];
-    const newRolls: number[] = [];
-    for (let i = 0; i < numDice; i++) {
-      const roll = Math.floor(Math.random() * 6) + 1;
-      newRolls.push(roll);
-    }
-    diceRolls = newRolls;
-
-    words = [
+    if (selectedDifficulty === null) return;
+    const selectedDifficultyConfig = difficulties.find(d => d.level === selectedDifficulty)!;
+    const numDice = selectedDifficultyConfig.diceCount;
+    diceRolls.splice(0, diceRolls.length, ...Array.from({ length: numDice }, rollDie));
+    outcome = getOutcome(selectedDifficulty, diceRolls);
+    words.splice(0, words.length,
       Math.floor(Math.random() * 1000).toString(),
       Math.floor(Math.random() * 1000).toString(),
       Math.floor(Math.random() * 1000).toString()
-    ];
-
+    );
     onAddStep();
     tried = true;
   }
@@ -54,15 +81,16 @@
           <input
             type="radio"
             name="difficulty"
-            value={difficulty}
-            bind:group={selectedDifficulty}
+            value={difficulty.level}
+            checked={selectedDifficulty === difficulty.level}
+            onchange={() => selectedDifficulty = difficulty.level}
           />
-          <span class="radio-label">{difficulty}</span>
+          <span class="radio-label">{difficulty.label}</span>
         </label>
       {/each}
     </fieldset>
 
-    <button on:click={handleTryClick} disabled={!selectedDifficulty}>
+    <button onclick={handleTryClick} disabled={selectedDifficulty === null}>
       Try
     </button>
 
@@ -77,6 +105,18 @@
         </span>
       {/each}
     </div>
+
+    {#if outcome}
+      <div class="outcome" style="color: {outcome.color}; border-color: {outcome.color}; background-color: {outcome.color}1a;">
+        {#if outcome.style === 'bold'}
+          <strong>{outcome.text}</strong>
+        {:else if outcome.style === 'italic'}
+          <em>{outcome.text}</em>
+        {:else}
+          {outcome.text}
+        {/if}
+      </div>
+    {/if}
 
     <ul>
       {#each words as word}
@@ -142,6 +182,15 @@
   .dice-results {
     display: flex;
     gap: 1rem;
+  }
+
+  .outcome {
+    font-size: 1.8rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid;
   }
 
   .dice {
