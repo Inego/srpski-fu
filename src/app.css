@@ -1,0 +1,29 @@
+/* src/app.css */
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+}
+
+body {
+  margin: 0;
+}
+
+#app {
+  /* 
+    CHANGED: Instead of a fixed height, we set a minimum height.
+    This ensures the app fills the screen on short pages, but
+    is allowed to GROW taller than the screen if the content needs it.
+    This is the key to letting the main browser scrollbar appear.
+  */
+  min-height: 100vh;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+}
